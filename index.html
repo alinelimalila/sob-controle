@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Sob Controle</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+  :root{
+    --bg:#0b0d12; --surface:#15171f; --surface-2:#1d2029; --border:#2b2f3a;
+    --fg:#eceef1; --fg-dim:#9a9ca6; --accent:#ff3b3b; --accent-soft:#4a1414;
+    --warn:#ffb020; --warn-soft:#4a3a14; --good:#35d07f; --good-soft:#123a26;
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
+  html,body{height:100%; margin:0;}
+  body{
+    background:var(--bg); color:var(--fg);
+    font-family:'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
+    overflow:hidden;
+    padding-left:max(16px, env(safe-area-inset-left,0px));
+    padding-right:max(16px, env(safe-area-inset-right,0px));
+  }
+  #app{height:100%; width:100%; position:relative; max-width:860px; margin:0 auto;}
+  .screen{
+    position:absolute; inset:0; display:none; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; padding:16px;
+  }
+  .screen.active{display:flex;}
+
+  .kicker{
+    font-family:'JetBrains Mono', ui-monospace, monospace; font-size:12px; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent); margin-bottom:14px;
+  }
+  h1{font-size:clamp(28px,7vw,44px); margin:0 0 14px; line-height:1.05;}
+  h1 .accent{color:var(--accent);}
+  p.lead{font-size:clamp(14px,3.4vw,18px); max-width:560px; line-height:1.55; color:var(--fg-dim);}
+
+  button{
+    margin-top:26px; padding:16px 36px; font-size:clamp(14px,3.2vw,17px); font-weight:700;
+    border:none; border-radius:12px; background:var(--accent); color:#1a0505; cursor:pointer;
+    font-family:inherit;
+  }
+  button.secondary{background:var(--surface-2); color:var(--fg); border:1px solid var(--border); margin-top:12px;}
+  button:active{transform:scale(.97);}
+
+  .live{
+    margin-top:22px; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:12px;
+    color:var(--fg-dim); display:flex; align-items:center; gap:8px;
+  }
+  .live .dot{width:7px; height:7px; border-radius:50%; background:var(--good); animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:.3;}}
+
+  .credit{
+    position:absolute; bottom:calc(14px + env(safe-area-inset-bottom,0px));
+    font-size:11px; color:#5b5e68; max-width:92%; line-height:1.5;
+  }
+
+  #hud{
+    position:absolute; top:0; left:0; right:0;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 18px; background:var(--surface); border-bottom:2px solid var(--accent);
+    z-index:5;
+  }
+  #hud .timer{
+    font-family:'JetBrains Mono', ui-monospace, monospace; font-size:clamp(20px,5vw,30px);
+    font-weight:700; font-variant-numeric:tabular-nums;
+  }
+  #hud .meta{font-family:'JetBrains Mono', ui-monospace, monospace; font-size:13px; color:var(--warn);}
+
+  #grid{
+    margin-top:88px; display:grid; grid-template-columns:repeat(5,1fr); gap:10px;
+    width:100%; max-width:480px;
+  }
+  .tile{
+    aspect-ratio:1; background:var(--surface-2); border:2px solid var(--border); border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono', ui-monospace, monospace; font-size:clamp(16px,4.5vw,22px);
+    font-weight:700; color:var(--fg);
+  }
+  .tile.done{background:var(--good-soft); border-color:var(--good); color:var(--good); opacity:.55;}
+  .tile.shake{animation:shake .25s; border-color:var(--accent);}
+  @keyframes shake{0%,100%{transform:translateX(0);} 25%{transform:translateX(-5px);} 75%{transform:translateX(5px);}}
+
+  #toast{
+    position:absolute; top:82px; left:50%; transform:translateX(-50%);
+    background:var(--accent); color:#1a0505; padding:9px 20px; border-radius:30px;
+    font-size:13px; font-weight:700; opacity:0; transition:opacity .3s; z-index:10;
+    max-width:88%; text-align:center;
+  }
+  #toast.show{opacity:1;}
+
+  .result-time{
+    font-family:'JetBrains Mono', ui-monospace, monospace; font-size:clamp(44px,13vw,72px);
+    font-weight:700; margin:6px 0; font-variant-numeric:tabular-nums;
+  }
+  .result-tag{font-size:13px; font-weight:700; padding:7px 18px; border-radius:30px; display:inline-block; margin-bottom:16px;}
+  .tag-bad{background:var(--accent-soft); color:#ff8f8f;}
+  .tag-meh{background:var(--warn-soft); color:var(--warn);}
+
+  .reflection{
+    max-width:540px; background:var(--surface); border-left:3px solid var(--accent);
+    padding:16px 18px; margin:16px 0; text-align:left; font-size:14px; line-height:1.6;
+    color:#d6d7db; border-radius:8px;
+  }
+  .reflection b{color:var(--fg);}
+
+  .stats{font-family:'JetBrains Mono', ui-monospace, monospace; font-size:12px; color:var(--fg-dim); margin-top:8px;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="screen active" id="screen-start">
+    <div class="kicker">Simulação · Controle Algorítmico</div>
+    <h1>Você está <span class="accent">SOB CONTROLE</span></h1>
+    <p class="lead">
+      Toque os números de 1 a 20, em ordem, o mais rápido possível.
+      Enquanto isso, um algoritmo vai monitorar seu desempenho em tempo real,
+      do jeito que acontece em apps de entrega, centrais de atendimento e sistemas de avaliação de metas.
+    </p>
+    <button onclick="startGame()">Começar o turno</button>
+    <div class="live" id="liveCounter">
+      <span class="dot"></span><span id="liveCounterText">carregando contagem coletiva...</span>
+    </div>
+    <div class="credit">
+      Baseado no resumo "O Controle Algorítmico como Nova Face da Alienação: Dimensões do Trabalho
+      e Desafios da Inteligência Artificial" — Aline Silva Lima, Francisco Canindé Carolino de Souza,
+      Francilene Francisco Tonetto de Faria, Gabriela de Almeida Ribeiro
+    </div>
+  </div>
+
+  <div class="screen" id="screen-game">
+    <div id="hud">
+      <div class="timer" id="timer">0.0s</div>
+      <div class="meta" id="metaLabel">meta: 12.0s</div>
+    </div>
+    <div id="toast"></div>
+    <div id="grid"></div>
+  </div>
+
+  <div class="screen" id="screen-result">
+    <div class="kicker">Turno encerrado</div>
+    <div class="result-time" id="resultTime">0.0s</div>
+    <div class="result-tag" id="resultTag"></div>
+    <div class="reflection">
+      Essa é uma simulação simplificada do que Ricardo <b>Antunes (2020)</b> chama de
+      <b>"privilégio da servidão"</b>: metas automatizadas, ritmo imposto e avaliação constante,
+      sem que quem trabalha tenha domínio real sobre o processo. Pense: em que momentos do seu
+      próprio trabalho ou estudo um sistema já decidiu seu ritmo por você?
+    </div>
+    <div class="stats" id="stats">sincronizando contagem coletiva...</div>
+    <button onclick="startGame()">Jogar de novo</button>
+    <button class="secondary" onclick="goHome()">Voltar ao início</button>
+  </div>
+
+</div>
+
+<script>
+  // Contagem coletiva via countapi.xyz (serviço público, gratuito, sem login).
+  // Namespace único para não colidir com outros usuários do serviço.
+  const NAMESPACE = 'lila-sepin2026-sobcontrole';
+  const KEY_PLAYS = 'plays';
+  const KEY_TOTAL_DECISEC = 'total-decisec';
+  const API = 'https://api.countapi.xyz';
+
+  const metaSeconds = 12.0;
+  const messages = [
+    "Ritmo abaixo da média da plataforma.",
+    "Sua avaliação está sendo calculada em tempo real.",
+    "Atenção: desempenho sendo monitorado.",
+    "Continue. Sua posição no ranking está mudando.",
+    "Produtividade insuficiente detectada.",
+    "Meta de hoje: não decepcione o algoritmo.",
+    "Tempo de resposta sendo registrado para fins de avaliação."
+  ];
+
+  let current = 1;
+  let startTime = null;
+  let timerInterval = null;
+  let messageTimeout = null;
+
+  function show(id){
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+  function goHome(){ show('screen-start'); refreshLiveCounter(); }
+
+  function buildGrid(){
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    const nums = Array.from({length:20}, (_, i) => i + 1);
+    for(let i = nums.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [nums[i], nums[j]] = [nums[j], nums[i]];
+    }
+    nums.forEach(n => {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      tile.textContent = n;
+      tile.dataset.n = n;
+      tile.addEventListener('click', () => tapTile(tile));
+      grid.appendChild(tile);
+    });
+  }
+
+  function tapTile(tile){
+    const n = parseInt(tile.dataset.n, 10);
+    if(n === current){
+      tile.classList.add('done');
+      current++;
+      if(current > 20) finishGame();
+    } else {
+      tile.classList.add('shake');
+      setTimeout(() => tile.classList.remove('shake'), 250);
+    }
+  }
+
+  function startGame(){
+    current = 1;
+    buildGrid();
+    show('screen-game');
+    startTime = Date.now();
+    document.getElementById('metaLabel').textContent = 'meta: ' + metaSeconds.toFixed(1) + 's';
+    timerInterval = setInterval(() => {
+      const elapsed = (Date.now() - startTime) / 1000;
+      document.getElementById('timer').textContent = elapsed.toFixed(1) + 's';
+    }, 100);
+    scheduleMessage();
+  }
+
+  function scheduleMessage(){
+    const delay = 1800 + Math.random() * 1600;
+    messageTimeout = setTimeout(() => {
+      showToast(messages[Math.floor(Math.random() * messages.length)]);
+      scheduleMessage();
+    }, delay);
+  }
+
+  function showToast(text){
+    const toast = document.getElementById('toast');
+    toast.textContent = text;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 1700);
+  }
+
+  function finishGame(){
+    clearInterval(timerInterval);
+    clearTimeout(messageTimeout);
+    const elapsed = (Date.now() - startTime) / 1000;
+    document.getElementById('resultTime').textContent = elapsed.toFixed(1) + 's';
+    const tag = document.getElementById('resultTag');
+    if(elapsed <= metaSeconds){
+      tag.textContent = 'Meta batida. Por enquanto, a plataforma está satisfeita.';
+      tag.className = 'result-tag tag-meh';
+    } else {
+      tag.textContent = 'Abaixo da meta da plataforma hoje.';
+      tag.className = 'result-tag tag-bad';
+    }
+    reportPlay(elapsed);
+    show('screen-result');
+  }
+
+  // ---- Contagem coletiva (todos os aparelhos veem o mesmo número) ----
+
+  async function reportPlay(elapsedSeconds){
+    const decisec = Math.max(1, Math.round(elapsedSeconds * 10));
+    try{
+      const [playsRes, totalRes] = await Promise.all([
+        fetch(`${API}/hit/${NAMESPACE}/${KEY_PLAYS}`),
+        fetch(`${API}/update/${NAMESPACE}/${KEY_TOTAL_DECISEC}?amount=${decisec}`)
+      ]);
+      const plays = (await playsRes.json()).value;
+      const total = (await totalRes.json()).value;
+      renderStats(plays, total);
+    }catch(e){
+      document.getElementById('stats').textContent =
+        'não foi possível sincronizar agora — sua rodada conta assim que a conexão voltar';
+    }
+  }
+
+  function renderStats(plays, totalDecisec){
+    const avg = plays ? (totalDecisec / 10 / plays).toFixed(1) : '0.0';
+    const text = plays + ' pessoa(s) já passaram pelo turno hoje — tempo médio: ' + avg + 's';
+    document.getElementById('stats').textContent = text;
+    document.getElementById('liveCounterText').textContent = plays + ' pessoas já participaram hoje';
+  }
+
+  async function refreshLiveCounter(){
+    try{
+      const [playsRes, totalRes] = await Promise.all([
+        fetch(`${API}/get/${NAMESPACE}/${KEY_PLAYS}`),
+        fetch(`${API}/get/${NAMESPACE}/${KEY_TOTAL_DECISEC}`)
+      ]);
+      const plays = (await playsRes.json()).value || 0;
+      const total = (await totalRes.json()).value || 0;
+      document.getElementById('liveCounterText').textContent = plays + ' pessoas já participaram hoje';
+    }catch(e){
+      document.getElementById('liveCounterText').textContent = 'contagem coletiva indisponível no momento';
+    }
+  }
+
+  refreshLiveCounter();
+  setInterval(refreshLiveCounter, 10000);
+</script>
+</body>
+</html>
