@@ -26,6 +26,7 @@
   .screen{
     position:absolute; inset:0; display:none; flex-direction:column;
     align-items:center; justify-content:center; text-align:center; padding:16px;
+    overflow-y:auto;
   }
   .screen.active{display:flex;}
 
@@ -50,12 +51,13 @@
     color:var(--fg-dim); display:flex; align-items:center; gap:8px;
   }
   .live .dot{width:7px; height:7px; border-radius:50%; background:var(--good); animation:pulse 1.6s infinite;}
+  .live .dot.off{background:#5b5e68; animation:none;}
   @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:.3;}}
 
   .credit{
-    position:absolute; bottom:calc(14px + env(safe-area-inset-bottom,0px));
-    font-size:11px; color:#5b5e68; max-width:92%; line-height:1.5;
+    margin-top:28px; font-size:11px; color:#6b6e78; max-width:600px; line-height:1.5;
   }
+  .credit b{color:#8a8d97; font-weight:600;}
 
   #hud{
     position:absolute; top:0; left:0; right:0;
@@ -101,19 +103,23 @@
 
   .reflection{
     max-width:540px; background:var(--surface); border-left:3px solid var(--accent);
-    padding:16px 18px; margin:16px 0; text-align:left; font-size:14px; line-height:1.6;
+    padding:16px 18px; margin:12px 0; text-align:left; font-size:14px; line-height:1.6;
     color:#d6d7db; border-radius:8px;
   }
   .reflection b{color:var(--fg);}
+  .ods{
+    max-width:540px; font-size:12px; color:var(--fg-dim); line-height:1.5; margin-top:4px;
+  }
+  .ods b{color:var(--good);}
 
-  .stats{font-family:'JetBrains Mono', ui-monospace, monospace; font-size:12px; color:var(--fg-dim); margin-top:8px;}
+  .stats{font-family:'JetBrains Mono', ui-monospace, monospace; font-size:12px; color:var(--fg-dim); margin-top:12px; max-width:540px; line-height:1.5;}
 </style>
 </head>
 <body>
 <div id="app">
 
   <div class="screen active" id="screen-start">
-    <div class="kicker">Simulação · Controle Algorítmico</div>
+    <div class="kicker">Mostra Interativa · XI Se²p²in IFPR</div>
     <h1>Você está <span class="accent">SOB CONTROLE</span></h1>
     <p class="lead">
       Toque os números de 1 a 20, em ordem, o mais rápido possível.
@@ -121,13 +127,14 @@
       do jeito que acontece em apps de entrega, centrais de atendimento e sistemas de avaliação de metas.
     </p>
     <button onclick="startGame()">Começar o turno</button>
-    <div class="live" id="liveCounter">
-      <span class="dot"></span><span id="liveCounterText">carregando contagem coletiva...</span>
+    <div class="live">
+      <span class="dot" id="liveDot"></span><span id="liveCounterText">carregando contagem coletiva...</span>
     </div>
     <div class="credit">
-      Baseado no resumo "O Controle Algorítmico como Nova Face da Alienação: Dimensões do Trabalho
-      e Desafios da Inteligência Artificial" — Aline Silva Lima, Francisco Canindé Carolino de Souza,
-      Francilene Francisco Tonetto de Faria, Gabriela de Almeida Ribeiro
+      Baseado no trabalho <b>"O Controle Algorítmico como Nova Face da Alienação: Dimensões do Trabalho
+      e Desafios da Inteligência Artificial para a Educação"</b>.
+      Aline Silva Lima, Francisco Canindé Carolino de Souza,
+      Francilene Francisco Tonetto de Faria, Gabriela de Almeida Ribeiro.
     </div>
   </div>
 
@@ -150,6 +157,10 @@
       sem que quem trabalha tenha domínio real sobre o processo. Pense: em que momentos do seu
       próprio trabalho ou estudo um sistema já decidiu seu ritmo por você?
     </div>
+    <div class="ods">
+      Relação com os ODS: <b>ODS 8</b> (Trabalho decente e crescimento econômico) e
+      <b>ODS 4</b> (Educação de qualidade).
+    </div>
     <div class="stats" id="stats">sincronizando contagem coletiva...</div>
     <button onclick="startGame()">Jogar de novo</button>
     <button class="secondary" onclick="goHome()">Voltar ao início</button>
@@ -158,12 +169,12 @@
 </div>
 
 <script>
-  // Contagem coletiva via countapi.xyz (serviço público, gratuito, sem login).
-  // Namespace único para não colidir com outros usuários do serviço.
-  const NAMESPACE = 'lila-sepin2026-sobcontrole';
-  const KEY_PLAYS = 'plays';
-  const KEY_TOTAL_DECISEC = 'total-decisec';
-  const API = 'https://api.countapi.xyz';
+  // Contagem coletiva via Abacus (substituto do CountAPI, gratuito, sem login).
+  // Usa apenas /hit (incrementa) e /get (lê). Não exige chave secreta no código.
+  const API = 'https://abacus.jasoncameron.dev';
+  const NAMESPACE = 'sepin2026-sobcontrole-lila';
+  const KEY_PLAYS = 'turnos';
+  const KEY_GOAL = 'metas-batidas';
 
   const metaSeconds = 12.0;
   const messages = [
@@ -180,6 +191,7 @@
   let startTime = null;
   let timerInterval = null;
   let messageTimeout = null;
+  let playing = false;
 
   function show(id){
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -206,6 +218,7 @@
   }
 
   function tapTile(tile){
+    if(!playing) return;
     const n = parseInt(tile.dataset.n, 10);
     if(n === current){
       tile.classList.add('done');
@@ -219,10 +232,14 @@
 
   function startGame(){
     current = 1;
+    playing = true;
     buildGrid();
     show('screen-game');
     startTime = Date.now();
     document.getElementById('metaLabel').textContent = 'meta: ' + metaSeconds.toFixed(1) + 's';
+    document.getElementById('timer').textContent = '0.0s';
+    clearInterval(timerInterval);
+    clearTimeout(messageTimeout);
     timerInterval = setInterval(() => {
       const elapsed = (Date.now() - startTime) / 1000;
       document.getElementById('timer').textContent = elapsed.toFixed(1) + 's';
@@ -246,63 +263,79 @@
   }
 
   function finishGame(){
+    playing = false;
     clearInterval(timerInterval);
     clearTimeout(messageTimeout);
     const elapsed = (Date.now() - startTime) / 1000;
+    const goalMet = elapsed <= metaSeconds;
     document.getElementById('resultTime').textContent = elapsed.toFixed(1) + 's';
     const tag = document.getElementById('resultTag');
-    if(elapsed <= metaSeconds){
+    if(goalMet){
       tag.textContent = 'Meta batida. Por enquanto, a plataforma está satisfeita.';
       tag.className = 'result-tag tag-meh';
     } else {
       tag.textContent = 'Abaixo da meta da plataforma hoje.';
       tag.className = 'result-tag tag-bad';
     }
-    reportPlay(elapsed);
+    document.getElementById('stats').textContent = 'sincronizando contagem coletiva...';
     show('screen-result');
+    reportPlay(goalMet);
   }
 
-  // ---- Contagem coletiva (todos os aparelhos veem o mesmo número) ----
+  // ---- Contagem coletiva (todos os aparelhos veem os mesmos números) ----
 
-  async function reportPlay(elapsedSeconds){
-    const decisec = Math.max(1, Math.round(elapsedSeconds * 10));
+  async function getValue(key){
+    const res = await fetch(`${API}/get/${NAMESPACE}/${key}`);
+    if(res.status === 404) return 0;          // contador ainda não criado
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    return (await res.json()).value || 0;
+  }
+
+  async function hitValue(key){
+    const res = await fetch(`${API}/hit/${NAMESPACE}/${key}`);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    return (await res.json()).value || 0;
+  }
+
+  async function reportPlay(goalMet){
     try{
-      const [playsRes, totalRes] = await Promise.all([
-        fetch(`${API}/hit/${NAMESPACE}/${KEY_PLAYS}`),
-        fetch(`${API}/update/${NAMESPACE}/${KEY_TOTAL_DECISEC}?amount=${decisec}`)
-      ]);
-      const plays = (await playsRes.json()).value;
-      const total = (await totalRes.json()).value;
-      renderStats(plays, total);
+      const plays = await hitValue(KEY_PLAYS);
+      const goals = goalMet ? await hitValue(KEY_GOAL) : await getValue(KEY_GOAL);
+      renderStats(plays, goals);
     }catch(e){
       document.getElementById('stats').textContent =
-        'não foi possível sincronizar agora — sua rodada conta assim que a conexão voltar';
+        'Não foi possível sincronizar a contagem coletiva agora.';
     }
   }
 
-  function renderStats(plays, totalDecisec){
-    const avg = plays ? (totalDecisec / 10 / plays).toFixed(1) : '0.0';
-    const text = plays + ' pessoa(s) já passaram pelo turno hoje — tempo médio: ' + avg + 's';
-    document.getElementById('stats').textContent = text;
-    document.getElementById('liveCounterText').textContent = plays + ' pessoas já participaram hoje';
+  function renderStats(plays, goals){
+    const pct = plays ? Math.round(100 * goals / plays) : 0;
+    document.getElementById('stats').textContent =
+      plays + ' turno(s) registrados na Mostra. ' +
+      goals + ' bateram a meta do algoritmo (' + pct + '%).';
+    setLive(plays, goals);
+  }
+
+  function setLive(plays, goals){
+    const pct = plays ? Math.round(100 * goals / plays) : 0;
+    document.getElementById('liveDot').classList.remove('off');
+    document.getElementById('liveCounterText').textContent =
+      plays + ' turnos registrados · ' + pct + '% bateram a meta';
   }
 
   async function refreshLiveCounter(){
+    if(!document.getElementById('screen-start').classList.contains('active')) return;
     try{
-      const [playsRes, totalRes] = await Promise.all([
-        fetch(`${API}/get/${NAMESPACE}/${KEY_PLAYS}`),
-        fetch(`${API}/get/${NAMESPACE}/${KEY_TOTAL_DECISEC}`)
-      ]);
-      const plays = (await playsRes.json()).value || 0;
-      const total = (await totalRes.json()).value || 0;
-      document.getElementById('liveCounterText').textContent = plays + ' pessoas já participaram hoje';
+      const [plays, goals] = await Promise.all([getValue(KEY_PLAYS), getValue(KEY_GOAL)]);
+      setLive(plays, goals);
     }catch(e){
+      document.getElementById('liveDot').classList.add('off');
       document.getElementById('liveCounterText').textContent = 'contagem coletiva indisponível no momento';
     }
   }
 
   refreshLiveCounter();
-  setInterval(refreshLiveCounter, 10000);
+  setInterval(refreshLiveCounter, 15000);
 </script>
 </body>
 </html>
