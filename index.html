@@ -120,7 +120,7 @@
 
   <div class="screen active" id="screen-start">
     <div class="kicker">Mostra Interativa · XI Se²p²in IFPR</div>
-    <h1>Você está <span class="accent">SOB CONTROLE</span></h1>
+    <h1>Você está <span class="accent">SOB CONTROLE</span>?</h1>
     <p class="lead">
       Toque os números de 1 a 20, em ordem, o mais rápido possível.
       Enquanto isso, um algoritmo vai monitorar seu desempenho em tempo real,
@@ -133,8 +133,9 @@
     <div class="credit">
       Baseado no trabalho <b>"O Controle Algorítmico como Nova Face da Alienação: Dimensões do Trabalho
       e Desafios da Inteligência Artificial para a Educação"</b>.
-      Aline Silva Lima, Francisco Canindé Carolino de Souza,
-      Francilene Francisco Tonetto de Faria, Gabriela de Almeida Ribeiro.
+      Aline Silva Lima, Gabriela de Almeida Ribeiro, Francisco Canindé Carolino de Souza,
+      Francilene Francisco Tonetto de Faria, Diogo Cesar Nunes da Silva,
+      Máriam Trierveiler Pereira.
     </div>
   </div>
 
@@ -172,7 +173,8 @@
   // Contagem coletiva via Abacus (substituto do CountAPI, gratuito, sem login).
   // Usa apenas /hit (incrementa) e /get (lê). Não exige chave secreta no código.
   const API = 'https://abacus.jasoncameron.dev';
-  const NAMESPACE = 'sepin2026-sobcontrole-lila';
+  // Para zerar a contagem, altere o sufixo (v2 -> v3 -> v4...).
+  const NAMESPACE = 'sepin2026-sobcontrole-lila-v2';
   const KEY_PLAYS = 'turnos';
   const KEY_GOAL = 'metas-batidas';
 
